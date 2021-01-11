@@ -1,4 +1,3 @@
-# Last Modified by Daniel Z. Jan 2021
 import os
 import subprocess as cmd
 import signal
@@ -9,6 +8,13 @@ from shutil import copyfile
 import datetime
 import sys, getopt
 import re
+import yaml
+
+def usage():
+    print('Usage:	' + os.path.basename(__file__) + ' option file ')
+    print('Options:')
+    print('\t -c, --custom')
+    sys.exit(2)
 
 def create_dir(new_directory):
     if not os.path.exists(new_directory):
@@ -16,12 +22,6 @@ def create_dir(new_directory):
         print("Directory ", new_directory," created.")
     else:
         print("Directory ", new_directory," already exists.")
-
-def usage():
-    print('Usage:	' + os.path.basename(__file__) + ' option file ')
-    print('Options:')
-    print('\t -c, --custom')
-    sys.exit(2)
 
 def replace_special_chars(git_dir_name):
     git_dir_name = git_dir_name.replace(' ', '-')
@@ -46,17 +46,29 @@ def replace_special_chars(git_dir_name):
     
     return git_dir_name
 
+########## Load and assign env vars from YAML ##########
+with open("env.yml", 'r') as stream:
+    try:
+        env = yaml.full_load(stream)
+    except yaml.YAMLError as exc:
+        print(exc)
 
-########### Path to needed directories. Change them as needed##########
-#working_directory = '/home/gabrian/University/CSCC01/TA/A1/marking/'
-working_directory = '/Users/danielzhao/Downloads/auto_restart/'
+    for key, value in env.items():
+        print(key, ":", value)
+        print(type(value))
+
+working_directory = env.get('working_directory')
+items_to_add = env.get('items_to_add')
+assignment_name = env.get('assignment_name')
+github_organization_url = env.get('github_organization_url')
+
+for item in items_to_add:
+    print(item)
+
+########## initialization variables ##########
+
 submissions_directory = working_directory + 'submissions'
 upload_to_github_dir = working_directory + 'upload_to_github'
-
-create_dir(upload_to_github_dir)
-
-#######################################################################
-python_dir = '/usr/local/bin'
 
 response_received = False
 message = "script testing 1"
@@ -64,13 +76,7 @@ message = "script testing 1"
 custom_submissions = []
 custom_submissions_status = False
 
-items_to_copy = list()
-items_to_copy.append('report.html')
-items_to_copy.append('output.xml')
-items_to_copy.append('log.html')
-#######################################################################
-
-# extract parameters
+########## extract parameters from user ##########
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hc:", [
                                 "help", "custom"])
@@ -91,8 +97,14 @@ for opt, arg in opts:
                 custom_submissions.append(line.strip('\n'))
             custom_submissions_status = True
     elif opt is None:
-        print("ERROR: Brother. You did not enter an option!")
+        print("ERROR: Nani? You did not enter an option.")
 
+########## code logic ##########
+# create dirs as necessary
+try:
+    create_dir(upload_to_github_dir)
+except:
+    print("ERROR: could not create dir " + upload_to_github_dir)
 
 # decide the list of submissions to go through
 if (custom_submissions):
@@ -107,11 +119,11 @@ for studentSubmission in to_be_processed_submissions:
         current_wkdir = upload_to_github_dir + "/"
 
         # get link and modify the repo to clone
-        git_dir_name = 'a1-' + studentSubmission.lower()
+        git_dir_name = assignment_name + studentSubmission.lower()
 
         git_dir_name = replace_special_chars(git_dir_name)
 
-        git_ssh = 'https://github.com/UTSCCSCC01/' + git_dir_name + '.git'
+        git_ssh = github_organization_url + git_dir_name + '.git'
         print('INFO: git_directory: ' + git_ssh)
         
         # change to working directory of all submissions to clone project
@@ -132,7 +144,7 @@ for studentSubmission in to_be_processed_submissions:
         os.chdir(dest_dir)
 
         # go through all items to copy over and upload eg. report.html, log.html
-        for item in items_to_copy:
+        for item in items_to_add:
             # copy .html from unzipped to upload_to_github_dir
             src = submissions_directory + '/' + studentSubmission + '/' + item
             dest = dest_dir + '/' + item
@@ -159,7 +171,7 @@ for studentSubmission in to_be_processed_submissions:
         
         # git add changed files and report time txt
         cmd.run("git add {}".format(report_time_filename), check=True, shell=True)
-        for item in items_to_copy:
+        for item in items_to_add:
             cmd.run("git add " + item, check=True, shell=True)        
         
         # git commit msg
