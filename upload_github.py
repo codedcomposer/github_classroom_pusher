@@ -23,14 +23,11 @@ def create_dir(new_directory):
     else:
         print("Directory ", new_directory," already exists.")
 
-def replace_special_chars(git_dir_name):
-    git_dir_name = git_dir_name.replace(' ', '-')
-    git_dir_name = git_dir_name.replace(')', '-')
-    git_dir_name = git_dir_name.replace('(', '-')
-    git_dir_name = git_dir_name.replace('\'', '-')
-    git_dir_name = git_dir_name.replace('&', '-')
-    git_dir_name = git_dir_name.replace('%', '-')
-    git_dir_name = git_dir_name.replace('.', '-')
+def gitify_repo_names(git_dir_name):
+    # replace stuff based on github repo's naming scheme
+    special_chars = [' ', ')', '(', '\'', '&', '%', '.']
+    for char in special_chars:
+        git_dir_name = git_dir_name.replace(char, '-')
 
     # use regex to fix multiple --'s after replacing special chars with -
     x = re.search("--+", git_dir_name)
@@ -121,7 +118,7 @@ for studentSubmission in to_be_processed_submissions:
         # get link and modify the repo to clone
         git_dir_name = assignment_name + studentSubmission.lower()
 
-        git_dir_name = replace_special_chars(git_dir_name)
+        git_dir_name = gitify_repo_names(git_dir_name)
 
         git_ssh = github_organization_url + git_dir_name + '.git'
         print('INFO: git_directory: ' + git_ssh)
