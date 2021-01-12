@@ -99,6 +99,7 @@ for opt, arg in opts:
 ########## code logic ##########
 # create dirs as necessary
 try:
+    create_dir(working_directory)
     create_dir(upload_to_github_dir)
 except:
     print("ERROR: could not create dir " + upload_to_github_dir)
